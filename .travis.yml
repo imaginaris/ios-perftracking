@@ -1,13 +1,26 @@
 language: objective-c
 xcode_workspace: RPerformanceTracking.xcworkspace
 xcode_scheme: Tests
-osx_image: xcode11
+osx_image: xcode12.4
+
+cache:
+  - bundler
 
 before_install:
-- gem update fastlane cocoapods --no-document
-- pod repo update
+  - gem update fastlane cocoapods --no-document
+  - pod repo update
 
 script: fastlane ci
 
 after_success:
-- bash <(curl -s https://codecov.io/bash) -f ./artifacts/coverage/cobertura.xml -X coveragepy -X gcov -X xcode
+  - |
+    set -e
+    curl -sS https://codecov.io/bash > codecov
+
+    # verify checksum
+    VERSION=$(grep -o 'VERSION=\"[0-9\.]*\"' codecov | cut -d'"' -f2)
+    for i in 1 256 512; do
+      printf "SHA$i: "
+      curl -sS "https://raw.githubusercontent.com/codecov/codecov-bash/${VERSION}/SHA${i}SUM" | grep codecov | shasum -a $i -c
+    done
+  - bash <(curl -s https://codecov.io/bash) -f ./artifacts/coverage/cobertura.xml -X coveragepy -X gcov -X xcode
